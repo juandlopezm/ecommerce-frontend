@@ -1,16 +1,11 @@
 import type { Product } from "../types";
+import { formatCOP } from "../utils/format";
 
 interface Props {
   products: Product[];
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
 }
-
-const cop = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  maximumFractionDigits: 0,
-});
 
 export function ProductTable({ products, onEdit, onDelete }: Props) {
   if (products.length === 0) {
@@ -41,7 +36,7 @@ export function ProductTable({ products, onEdit, onDelete }: Props) {
               <td className="px-4 py-3 font-medium text-slate-800">{p.name}</td>
               <td className="px-4 py-3 text-slate-600">{p.brand || "—"}</td>
               <td className="px-4 py-3 text-slate-600">{p.category || "—"}</td>
-              <td className="px-4 py-3 text-right">{cop.format(Number(p.price))}</td>
+              <td className="px-4 py-3 text-right">{formatCOP(p.price)}</td>
               <td className="px-4 py-3 text-right">{p.stock}</td>
               <td className="px-4 py-3">
                 {p.is_available ? (

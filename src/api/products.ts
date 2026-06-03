@@ -6,6 +6,11 @@ export async function listProducts(): Promise<Product[]> {
   return data;
 }
 
+export async function getProduct(id: number): Promise<Product> {
+  const { data } = await api.get<Product>(`/products/${id}`);
+  return data;
+}
+
 export async function createProduct(input: ProductInput): Promise<Product> {
   const { data } = await api.post<Product>("/products", input);
   return data;

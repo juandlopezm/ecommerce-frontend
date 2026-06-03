@@ -21,7 +21,7 @@ export function LoginPage() {
         setError("Esta cuenta no tiene permisos de administrador.");
         return;
       }
-      navigate("/productos", { replace: true });
+      navigate("/admin", { replace: true });
     } catch {
       setError("Credenciales inválidas. Verifica tu correo y contraseña.");
     } finally {

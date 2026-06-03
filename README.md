@@ -35,8 +35,14 @@ tiene CORS habilitado para `http://localhost:5173`. Inicia sesión con el admini
 
 ## Funcionalidad
 
+Vistas públicas (cliente):
+- **Catálogo** (`/`): listado de productos con búsqueda por nombre y filtros por categoría y marca,
+  indicando disponibilidad (RF-01).
+- **Detalle** (`/producto/:id`): ficha del producto (descripción, precio, marca, categoría, stock).
+
+Administración:
 - **Login** (`/login`): autenticación contra `/api/v1/auth/login`; exige rol `administrador`.
-- **Panel de productos** (`/productos`, protegido): listar, crear, editar y eliminar productos
+- **Panel de productos** (`/admin`, protegido): listar, crear, editar y eliminar productos
   consumiendo `/api/v1/products`.
 
 ## Scripts
