@@ -1,13 +1,22 @@
 import { type MouseEvent } from "react";
 import { Link } from "react-router-dom";
+import { useCart } from "../cart/CartContext";
 import type { Product } from "../types";
 import { formatCOP } from "../utils/format";
 
-/** Tarjeta de producto estilo portada. El corazón y el botón "+" son decorativos (sin backend). */
+/** Tarjeta de producto estilo portada. El botón "+" agrega al carrito; el corazón es decorativo. */
 export function ProductCard({ product }: { product: Product }) {
+  const { add } = useCart();
+
   function decorative(e: MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+  }
+
+  function addToCart(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    add(product, 1);
   }
 
   return (
@@ -55,10 +64,11 @@ export function ProductCard({ product }: { product: Product }) {
             )}
           </div>
           <button
-            onClick={decorative}
-            title="Próximamente"
+            onClick={addToCart}
+            disabled={!product.is_available}
+            title={product.is_available ? "Agregar al carrito" : "Agotado"}
             aria-label="Agregar al carrito"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-pink-600 text-lg font-bold text-white hover:bg-pink-700"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-pink-600 text-lg font-bold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-40"
           >
             +
           </button>

@@ -38,7 +38,10 @@ tiene CORS habilitado para `http://localhost:5173`. Inicia sesión con el admini
 Vistas públicas (cliente):
 - **Catálogo** (`/`): listado de productos con búsqueda por nombre y filtros por categoría y marca,
   indicando disponibilidad (RF-01).
-- **Detalle** (`/producto/:id`): ficha del producto (descripción, precio, marca, categoría, stock).
+- **Detalle** (`/producto/:id`): ficha del producto (descripción, precio, marca, categoría, stock)
+  con selector de cantidad y "Agregar al carrito".
+- **Carrito** (`/carrito`): agregar/modificar cantidad/eliminar, totales en vivo y validación de
+  stock. Persistido en `localStorage` (RF-03). El pago (RF-04) queda como "próximamente".
 
 Administración:
 - **Login** (`/login`): autenticación contra `/api/v1/auth/login`; exige rol `administrador`.

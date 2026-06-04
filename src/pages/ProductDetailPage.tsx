@@ -1,15 +1,26 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getProduct } from "../api/products";
+import { useCart } from "../cart/CartContext";
 import { PublicLayout } from "../components/PublicLayout";
 import type { Product } from "../types";
 import { formatCOP } from "../utils/format";
 
 export function ProductDetailPage() {
   const { id } = useParams();
+  const { add } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [qty, setQty] = useState(1);
+  const [added, setAdded] = useState(false);
+
+  function handleAdd() {
+    if (!product) return;
+    add(product, qty);
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 2000);
+  }
 
   useEffect(() => {
     const pid = Number(id);
@@ -76,6 +87,29 @@ export function ProductDetailPage() {
                 </span>
               )}
             </div>
+
+            {product.is_available && (
+              <div className="mt-6 flex items-center gap-3">
+                <select
+                  value={qty}
+                  onChange={(e) => setQty(Number(e.target.value))}
+                  className="rounded border border-slate-300 px-3 py-2 text-sm outline-none focus:border-pink-500"
+                >
+                  {Array.from({ length: Math.min(product.stock, 10) }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleAdd}
+                  className="rounded-full bg-pink-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-pink-700"
+                >
+                  Agregar al carrito
+                </button>
+                {added && <span className="text-sm text-green-600">Agregado ✓</span>}
+              </div>
+            )}
 
             {product.description && (
               <p className="mt-6 leading-relaxed text-slate-600">{product.description}</p>
