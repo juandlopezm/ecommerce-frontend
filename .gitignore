@@ -18,6 +18,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# E2E (Python / pytest-playwright)
+e2e/.venv/
+**/__pycache__/
+.pytest_cache/
+test-results/
+
 # Editores / SO
 .vscode/
 .idea/
