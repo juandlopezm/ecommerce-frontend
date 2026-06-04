@@ -3,6 +3,7 @@ import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { CartPage } from "./pages/CartPage";
 import { CatalogPage } from "./pages/CatalogPage";
 import { LoginPage } from "./pages/LoginPage";
+import { OrdersAdminPage } from "./pages/OrdersAdminPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { ProductsPage } from "./pages/ProductsPage";
 
@@ -21,6 +22,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ProductsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/pedidos"
+        element={
+          <ProtectedRoute>
+            <OrdersAdminPage />
           </ProtectedRoute>
         }
       />
