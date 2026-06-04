@@ -47,6 +47,9 @@ Administración:
 - **Login** (`/login`): autenticación contra `/api/v1/auth/login`; exige rol `administrador`.
 - **Panel de productos** (`/admin`, protegido): listar, crear, editar y eliminar productos
   consumiendo `/api/v1/products`.
+- **Panel de pedidos** (`/admin/pedidos`, protegido): listar pedidos con detalle (cliente, envío,
+  productos), ver método/estado de pago y **cambiar el estado** del pedido (al cancelar, el backend
+  restaura el stock).
 
 ## Scripts
 
