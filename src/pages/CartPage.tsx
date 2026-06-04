@@ -110,13 +110,12 @@ export function CartPage() {
             <span>Total</span>
             <span>{formatCOP(subtotal)}</span>
           </div>
-          <button
-            disabled
-            title="Próximamente"
-            className="mt-6 w-full cursor-not-allowed rounded-full bg-pink-600 py-3 font-semibold text-white opacity-60"
+          <Link
+            to="/checkout"
+            className="mt-6 block w-full rounded-full bg-pink-600 py-3 text-center font-semibold text-white hover:bg-pink-700"
           >
-            Finalizar compra (próximamente)
-          </button>
+            Finalizar compra
+          </Link>
           <Link
             to="/"
             className="mt-3 block text-center text-sm text-slate-500 hover:text-pink-600"
