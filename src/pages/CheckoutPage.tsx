@@ -86,12 +86,23 @@ export function CheckoutPage() {
             <h2 className="mb-4 font-semibold text-slate-800">Datos de envío</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm font-medium">Nombre completo</label>
-                <input className={input} value={name} onChange={(e) => setName(e.target.value)} required />
+                <label htmlFor="name" className="mb-1 block text-sm font-medium">
+                  Nombre completo
+                </label>
+                <input
+                  id="name"
+                  className={input}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Correo</label>
+                <label htmlFor="email" className="mb-1 block text-sm font-medium">
+                  Correo
+                </label>
                 <input
+                  id="email"
                   type="email"
                   className={input}
                   value={email}
@@ -100,12 +111,22 @@ export function CheckoutPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Teléfono</label>
-                <input className={input} value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <label htmlFor="phone" className="mb-1 block text-sm font-medium">
+                  Teléfono
+                </label>
+                <input
+                  id="phone"
+                  className={input}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
               </div>
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm font-medium">Dirección de envío</label>
+                <label htmlFor="address" className="mb-1 block text-sm font-medium">
+                  Dirección de envío
+                </label>
                 <textarea
+                  id="address"
                   className={input}
                   rows={2}
                   value={address}
