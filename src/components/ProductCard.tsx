@@ -2,11 +2,13 @@ import { type MouseEvent } from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "../cart/CartContext";
 import type { Product } from "../types";
+import { useToast } from "../ui/ToastContext";
 import { formatCOP } from "../utils/format";
 
 /** Tarjeta de producto estilo portada. El botón "+" agrega al carrito; el corazón es decorativo. */
 export function ProductCard({ product }: { product: Product }) {
   const { add } = useCart();
+  const { show } = useToast();
 
   function decorative(e: MouseEvent) {
     e.preventDefault();
@@ -17,12 +19,13 @@ export function ProductCard({ product }: { product: Product }) {
     e.preventDefault();
     e.stopPropagation();
     add(product, 1);
+    show(`${product.name} agregado al carrito`);
   }
 
   return (
     <Link
       to={`/producto/${product.id}`}
-      className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition hover:shadow-md"
+      className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg"
     >
       <button
         onClick={decorative}
