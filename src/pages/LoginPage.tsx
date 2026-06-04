@@ -33,7 +33,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm rounded-xl bg-white p-8 shadow-md"
+        className="animate-fade-in-up w-full max-w-sm rounded-xl bg-white p-8 shadow-md"
       >
         <h1 className="mb-1 text-2xl font-bold text-slate-800">Iniciar sesión</h1>
         <p className="mb-6 text-sm text-slate-500">Panel de administración</p>
