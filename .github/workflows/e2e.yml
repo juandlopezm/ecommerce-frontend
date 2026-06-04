@@ -21,8 +21,13 @@ jobs:
       - name: Checkout del frontend
         uses: actions/checkout@v4
 
-      - name: Clonar el backend (entorno de prueba)
-        run: git clone --depth 1 --branch develop https://github.com/juandlopezm/ecommerce-backend.git backend
+      - name: Arrancar backend (imagen Docker de GHCR)
+        run: |
+          docker run -d --name backend -p 8000:8000 \
+            ghcr.io/juandlopezm/ecommerce-backend:latest \
+            sh -c "alembic upgrade head && python -m app.seed && python -m app.seed_products && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+          echo "Esperando el backend..."
+          for i in $(seq 1 60); do curl -sf http://localhost:8000/health && break; sleep 2; done
 
       - name: Configurar Python
         uses: actions/setup-python@v5
@@ -35,26 +40,14 @@ jobs:
           node-version: "22"
           cache: npm
 
-      - name: Arrancar backend (SQLite efímero + datos sembrados)
-        working-directory: backend
-        env:
-          DATABASE_URL: "sqlite:///./e2e.db"
-        run: |
-          pip install -e .
-          alembic upgrade head
-          python -m app.seed
-          python -m app.seed_products
-          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > backend.log 2>&1 &
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health && break; sleep 1; done
-
       - name: Construir y servir el frontend
         env:
-          VITE_API_URL: "http://127.0.0.1:8000/api/v1"
+          VITE_API_URL: "http://localhost:8000/api/v1"
         run: |
           npm ci
           npm run build
-          nohup npm run preview -- --port 5173 --host 127.0.0.1 > front.log 2>&1 &
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:5173/ && break; sleep 1; done
+          nohup npm run preview -- --port 5173 > front.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:5173/ && break; sleep 1; done
 
       - name: Instalar Playwright + navegador
         working-directory: e2e
@@ -65,12 +58,13 @@ jobs:
       - name: Ejecutar pruebas E2E
         working-directory: e2e
         env:
-          E2E_BASE_URL: "http://127.0.0.1:5173"
+          E2E_BASE_URL: "http://localhost:5173"
         run: pytest --junitxml=report.xml --tracing=retain-on-failure
 
-      - name: Publicar resultados (check con tests aprobados/fallidos)
+      - name: Publicar resultados (tests aprobados/fallidos)
         uses: dorny/test-reporter@v1
         if: always()
+        continue-on-error: true
         with:
           name: Resultados E2E
           path: e2e/report.xml
@@ -85,3 +79,7 @@ jobs:
             e2e/report.xml
             e2e/test-results/
           retention-days: 7
+
+      - name: Logs del backend (si falla)
+        if: failure()
+        run: docker logs backend || true
