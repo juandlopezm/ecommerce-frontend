@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
+import { CartPage } from "./pages/CartPage";
 import { CatalogPage } from "./pages/CatalogPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
@@ -11,6 +12,7 @@ export default function App() {
       {/* Vistas públicas (cliente) */}
       <Route path="/" element={<CatalogPage />} />
       <Route path="/producto/:id" element={<ProductDetailPage />} />
+      <Route path="/carrito" element={<CartPage />} />
 
       {/* Administración */}
       <Route path="/login" element={<LoginPage />} />

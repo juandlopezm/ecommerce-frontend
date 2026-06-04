@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useCart } from "../cart/CartContext";
 
 interface Props {
   /** Si se pasa junto a onSearchChange, el buscador es controlado (filtra en vivo). */
@@ -11,6 +12,7 @@ interface Props {
  *  Carrito y favoritos son decorativos por ahora (sin backend). */
 export function StoreHeader({ search, onSearchChange }: Props) {
   const navigate = useNavigate();
+  const { count } = useCart();
   const controlled = onSearchChange !== undefined;
   const [internal, setInternal] = useState("");
   const value = controlled ? (search ?? "") : internal;
@@ -62,15 +64,11 @@ export function StoreHeader({ search, onSearchChange }: Props) {
             <span className="hidden lg:inline">Favoritos</span>
             <Badge>3</Badge>
           </button>
-          <button
-            type="button"
-            title="Próximamente"
-            className="relative flex items-center gap-1.5 hover:text-pink-600"
-          >
+          <Link to="/carrito" className="relative flex items-center gap-1.5 hover:text-pink-600">
             <CartIcon />
             <span className="hidden lg:inline">Carrito</span>
-            <Badge>2</Badge>
-          </button>
+            {count > 0 && <Badge>{count}</Badge>}
+          </Link>
         </nav>
       </div>
     </header>
