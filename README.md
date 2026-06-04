@@ -41,7 +41,10 @@ Vistas públicas (cliente):
 - **Detalle** (`/producto/:id`): ficha del producto (descripción, precio, marca, categoría, stock)
   con selector de cantidad y "Agregar al carrito".
 - **Carrito** (`/carrito`): agregar/modificar cantidad/eliminar, totales en vivo y validación de
-  stock. Persistido en `localStorage` (RF-03). El pago (RF-04) queda como "próximamente".
+  stock. Persistido en `localStorage` (RF-03).
+- **Checkout** (`/checkout`): datos de envío + método de pago (pasarela/contra entrega), resumen y
+  confirmación de la compra vía `POST /orders` (RF-04). Tras confirmar, muestra la **confirmación del
+  pedido** (`/pedido/:id`) y vacía el carrito.
 
 Administración:
 - **Login** (`/login`): autenticación contra `/api/v1/auth/login`; exige rol `administrador`.

@@ -57,3 +57,18 @@ export interface Order {
   items: OrderItem[];
   created_at: string;
 }
+
+export interface CheckoutItemInput {
+  product_id: number;
+  quantity: number;
+}
+
+export interface CheckoutPayload {
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  shipping_address: string;
+  payment_method: PaymentMethod;
+  items: CheckoutItemInput[];
+  simulate_payment_failure?: boolean;
+}
