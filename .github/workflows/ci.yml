@@ -1,0 +1,32 @@
+name: CI Frontend
+
+# Se ejecuta en cada push a cualquier rama y en los Pull Requests hacia develop/main.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  build-test:
+    name: Typecheck + build + pruebas
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Typecheck + build
+        run: npm run build
+
+      - name: Pruebas unitarias (Vitest)
+        run: npm run test
