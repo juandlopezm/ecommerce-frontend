@@ -20,7 +20,7 @@ vi.mock("../auth/AuthContext", () => ({
   })),
 }));
 
-import { listProducts, createProduct, deleteProduct } from "../api/products";
+import { listProducts, deleteProduct } from "../api/products";
 
 const makeProduct = (id: number, name: string): Product => ({
   id,
