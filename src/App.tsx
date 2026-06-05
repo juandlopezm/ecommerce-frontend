@@ -3,6 +3,7 @@ import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { CartPage } from "./pages/CartPage";
 import { CatalogPage } from "./pages/CatalogPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
+import { CuentaPage } from "./pages/CuentaPage";
 import { LoginPage } from "./pages/LoginPage";
 import { OrderConfirmationPage } from "./pages/OrderConfirmationPage";
 import { OrdersAdminPage } from "./pages/OrdersAdminPage";
@@ -19,7 +20,10 @@ export default function App() {
       <Route path="/checkout" element={<CheckoutPage />} />
       <Route path="/pedido/:id" element={<OrderConfirmationPage />} />
 
-      {/* Administración */}
+      {/* Cuenta de cliente */}
+      <Route path="/cuenta" element={<CuentaPage />} />
+
+      {/* Administración (sólo por URL directa) */}
       <Route path="/login" element={<LoginPage />} />
       <Route
         path="/admin"

@@ -1,4 +1,4 @@
-import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider, useToast } from "./ToastContext";
 
@@ -29,7 +29,7 @@ describe("show()", () => {
     );
 
     // Act
-    screen.getByRole("button").click();
+    fireEvent.click(screen.getByRole("button"));
 
     // Assert
     expect(screen.getByText("Producto agregado al carrito")).toBeInTheDocument();
@@ -46,16 +46,14 @@ describe("show()", () => {
         <Trigger />
       </ToastProvider>,
     );
-    screen.getByRole("button").click();
+    fireEvent.click(screen.getByRole("button"));
     expect(screen.getByText("Mensaje temporal")).toBeInTheDocument();
 
-    // Act
-    act(() => vi.advanceTimersByTime(2500));
+    // Act – avanzamos los timers falsos y flusheamos las actualizaciones de React
+    await act(async () => { vi.advanceTimersByTime(2500); });
 
-    // Assert
-    await waitFor(() =>
-      expect(screen.queryByText("Mensaje temporal")).not.toBeInTheDocument(),
-    );
+    // Assert – ya sin waitFor porque los timers están bajo control total
+    expect(screen.queryByText("Mensaje temporal")).not.toBeInTheDocument();
   });
 
   it("puede mostrar múltiples toasts simultáneamente", () => {
@@ -76,8 +74,8 @@ describe("show()", () => {
     );
 
     // Act
-    screen.getByText("Primero").click();
-    screen.getByText("Segundo").click();
+    fireEvent.click(screen.getByText("Primero"));
+    fireEvent.click(screen.getByText("Segundo"));
 
     // Assert
     expect(screen.getByText("Primer toast")).toBeInTheDocument();

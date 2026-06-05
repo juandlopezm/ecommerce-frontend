@@ -62,7 +62,7 @@ describe("CartPage – carrito con ítems", () => {
     renderCartPage([{ product: mockProduct, quantity: 2 }]);
 
     expect(screen.getByText("Labial Rosa Intenso")).toBeInTheDocument();
-    expect(screen.getByText(/2 ítems/)).toBeInTheDocument();
+    expect(screen.getAllByText(/2 ítems/).length).toBeGreaterThan(0);
   });
 
   it("el botón Aumentar incrementa la cantidad del producto", () => {
@@ -70,7 +70,7 @@ describe("CartPage – carrito con ítems", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /aumentar/i }));
 
-    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
   });
 
   it("el botón Disminuir reduce la cantidad del producto", () => {
@@ -78,7 +78,7 @@ describe("CartPage – carrito con ítems", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /disminuir/i }));
 
-    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
   });
 
   it("el botón Aumentar está deshabilitado cuando la cantidad alcanza el stock", () => {

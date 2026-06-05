@@ -51,7 +51,7 @@ export function StoreHeader({ search, onSearchChange }: Props) {
         </form>
 
         <nav className="flex shrink-0 items-center gap-5 text-sm text-slate-700">
-          <Link to="/login" className="flex items-center gap-1.5 hover:text-pink-600">
+          <Link to="/cuenta" className="flex items-center gap-1.5 hover:text-pink-600">
             <UserIcon />
             <span className="hidden lg:inline">Mi cuenta</span>
           </Link>
