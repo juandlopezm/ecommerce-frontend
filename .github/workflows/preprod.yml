@@ -1,0 +1,55 @@
+name: Preproduccion (build)
+
+# Construye el ambiente de preproduccion completo en contenedores y verifica que LEVANTA.
+# (Las pruebas E2E/integracion contra este stack se agregaran despues.)
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+concurrency:
+  group: preprod-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-preprod:
+    name: Construir y levantar preproduccion
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Construir y levantar el stack
+        run: docker compose -f docker-compose.preprod.yml up --build -d
+
+      - name: Verificar que el backend levanta
+        run: |
+          echo "Esperando al backend..."
+          for i in $(seq 1 40); do
+            if curl -sf http://localhost:8000/health >/dev/null; then echo "backend OK"; break; fi
+            sleep 3
+          done
+          curl -sf http://localhost:8000/health
+          echo "Productos:"; curl -sf http://localhost:8000/api/v1/products | head -c 120; echo
+
+      - name: Verificar que el frontend levanta
+        run: |
+          echo "Esperando al frontend..."
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:8080/ >/dev/null; then echo "frontend OK"; break; fi
+            sleep 2
+          done
+          curl -s -o /dev/null -w "frontend HTTP %{http_code}\n" http://localhost:8080/
+
+      - name: Logs del stack (si algo falla)
+        if: failure()
+        run: docker compose -f docker-compose.preprod.yml logs
+
+      - name: Bajar el stack
+        if: always()
+        run: docker compose -f docker-compose.preprod.yml down -v
