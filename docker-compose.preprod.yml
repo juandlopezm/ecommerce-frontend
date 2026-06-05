@@ -1,0 +1,50 @@
+# Ambiente de PREPRODUCCIÓN — toda la tienda en contenedores (paridad con producción).
+#
+#   docker compose -f docker-compose.preprod.yml up --build
+#
+#   Frontend:  http://localhost:8080
+#   Backend:   http://localhost:8000/docs
+#   Admin:     admin@ecommerce.com / Admin123!
+#
+# Levanta PostgreSQL real + backend (imagen GHCR, migraciones+seed) + frontend (Nginx).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ecommerce
+      POSTGRES_PASSWORD: ecommerce
+      POSTGRES_DB: ecommerce
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecommerce"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/juandlopezm/ecommerce-backend:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://ecommerce:ecommerce@db:5432/ecommerce
+      CORS_ORIGINS: '["http://localhost:8080"]'
+      JWT_SECRET: preprod-secret-cambialo-en-produccion-32bytes
+      ADMIN_EMAIL: admin@ecommerce.com
+      ADMIN_PASSWORD: Admin123!
+    command: >-
+      sh -c "alembic upgrade head &&
+             python -m app.seed &&
+             python -m app.seed_products &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: .
+      args:
+        VITE_API_URL: http://localhost:8000/api/v1
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"

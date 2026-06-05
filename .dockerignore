@@ -1,0 +1,8 @@
+node_modules
+dist
+.git
+e2e/.venv
+e2e/**/__pycache__
+**/*.local
+.env
+.env*.local
