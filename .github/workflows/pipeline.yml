@@ -1,0 +1,313 @@
+name: Pipeline Frontend
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pipeline ÚNICO (reemplaza a ci.yml + e2e.yml + preprod.yml).
+#
+# El job `route` decide el FLUJO según la rama destino; el resto se activa con
+# `if: needs.route.outputs.flow == '...'`. Cada prueba corre en UN solo flujo:
+#
+#   flow=ci      → feature/**, develop, PR→develop
+#                  lint(tsc+build) · npm audit · unit/componente(Vitest)
+#                  · cobertura(≥70%) · SonarCloud
+#   flow=cd      → release/**, PR→main
+#                  preprod en Docker (postgres + backend GHCR + frontend Nginx)
+#                  + E2E(pytest-playwright) · ZAP(DAST) con gates ESTRICTOS
+#   flow=deploy  → push a main
+#                  build de producción + publica imagen GHCR
+#
+# Al final, `dashboard` agrega resultados (Step Summary + HTML + GitHub Pages).
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+
+concurrency:
+  group: pipeline-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+  packages: write
+  pages: write
+  id-token: write
+
+jobs:
+  # ═══ 0. Arranque común: decidir el flujo ════════════════════════════════════
+  route:
+    name: Determinar flujo
+    runs-on: ubuntu-latest
+    outputs:
+      flow: ${{ steps.r.outputs.flow }}
+    steps:
+      - id: r
+        shell: bash
+        run: |
+          REF="${{ github.ref }}"
+          BASE="${{ github.base_ref }}"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            if [[ "$BASE" == "main" ]]; then FLOW=cd; else FLOW=ci; fi
+          elif [[ "$REF" == "refs/heads/main" ]]; then
+            FLOW=deploy
+          elif [[ "$REF" == refs/heads/release/* ]]; then
+            FLOW=cd
+          else
+            FLOW=ci
+          fi
+          echo "flow=$FLOW" >> "$GITHUB_OUTPUT"
+          echo "Flujo seleccionado: $FLOW"
+
+  # ═══ 1. CI · Lint y build (typecheck) ════════════════════════════════════════
+  lint:
+    name: Lint y build
+    needs: route
+    if: needs.route.outputs.flow == 'ci'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Typecheck + build
+        run: npm run build # tsc --noEmit && vite build
+
+  # ═══ 2. CI · Auditoría de dependencias (SAST) ════════════════════════════════
+  audit:
+    name: npm audit
+    needs: route
+    if: needs.route.outputs.flow == 'ci'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Auditar dependencias (informativo)
+        run: npm audit --audit-level=high || true
+
+  # ═══ 3. CI · Unit/componente + cobertura (gate ≥70%) ═════════════════════════
+  test:
+    name: Pruebas + cobertura (≥70%)
+    needs: route
+    if: needs.route.outputs.flow == 'ci'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      # Vitest emite junit (reporters en vite.config.ts) + lcov/html y aplica el
+      # gate ≥70% definido en coverage.thresholds. Una sola corrida (sin redundancia).
+      - name: Vitest run --coverage
+        run: npm run test:coverage
+      - uses: dorny/test-reporter@v1
+        if: always()
+        continue-on-error: true
+        with:
+          name: Resultados unitarias
+          path: reports/junit-unit.xml
+          reporter: java-junit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            reports/junit-unit.xml
+            coverage/
+          retention-days: 7
+
+  # ═══ 4. CI · SonarCloud ══════════════════════════════════════════════════════
+  sonarcloud:
+    name: SonarCloud
+    needs: [route, test]
+    if: needs.route.outputs.flow == 'ci'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: test-results
+          path: .
+        continue-on-error: true
+      - uses: SonarSource/sonarcloud-github-action@master
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+          SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+
+  # ═══ 5. CD · Preprod en Docker + E2E + DAST (gates estrictos) ════════════════
+  preprod-e2e:
+    name: Preprod + E2E + ZAP
+    needs: route
+    if: needs.route.outputs.flow == 'cd'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Login a GHCR (imagen backend)
+        continue-on-error: true
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Levantar preprod (postgres + backend GHCR + frontend Nginx)
+        run: |
+          docker compose -f docker-compose.preprod.yml up --build -d
+          echo "Esperando backend :8000 y frontend :8080..."
+          for i in $(seq 1 40); do
+            back=$(curl -sf http://localhost:8000/health >/dev/null && echo ok || echo no)
+            front=$(curl -sf http://localhost:8080 >/dev/null && echo ok || echo no)
+            if [ "$back" = "ok" ] && [ "$front" = "ok" ]; then echo "stack listo"; break; fi
+            echo "esperando stack ($i) back=$back front=$front..."; sleep 3
+          done
+          curl -sf http://localhost:8000/health
+          curl -sf http://localhost:8080 >/dev/null
+
+      # ── E2E (pytest-playwright contra el preprod) ────────────────────────────
+      - name: E2E (Playwright)
+        id: e2e
+        continue-on-error: true
+        env:
+          E2E_BASE_URL: http://localhost:8080
+          E2E_ADMIN_EMAIL: admin@ecommerce.com
+          E2E_ADMIN_PASSWORD: Admin123!
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r e2e/requirements.txt
+          python -m playwright install --with-deps chromium
+          mkdir -p reports
+          pytest e2e/tests \
+            -c e2e/pytest.ini \
+            --junitxml=reports/junit-e2e.xml \
+            --tracing=retain-on-failure
+
+      # ── DAST (OWASP ZAP baseline contra el frontend) ─────────────────────────
+      - name: OWASP ZAP (DAST)
+        id: zap
+        continue-on-error: true
+        uses: zaproxy/action-baseline@master
+        with:
+          target: http://172.17.0.1:8080
+          rules_file_name: .zap/rules.tsv
+          fail_action: true
+          allow_issue_writing: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          cmd_options: "-a"
+
+      - name: Apagar preprod
+        if: always()
+        run: docker compose -f docker-compose.preprod.yml down -v
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cd-reports
+          path: |
+            reports/
+            e2e/test-results/
+            report_json.json
+            report_html.html
+            report_md.md
+          retention-days: 7
+
+      # ── Gate estricto ────────────────────────────────────────────────────────
+      - name: Gate CD (estricto)
+        if: always()
+        run: |
+          fail=0
+          [ "${{ steps.e2e.outcome }}" = "success" ] || { echo "❌ E2E falló"; fail=1; }
+          [ "${{ steps.zap.outcome }}" = "success" ] || { echo "❌ ZAP (DAST) falló"; fail=1; }
+          [ "$fail" = "0" ] && echo "✅ Todos los gates de CD pasaron"
+          exit $fail
+
+  # ═══ 6. DEPLOY · Build de producción + publicar imagen GHCR ══════════════════
+  deploy-front:
+    name: Build prod + publicar imagen
+    needs: route
+    if: needs.route.outputs.flow == 'deploy'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+  # ═══ 7. Dashboard agregado (siempre) ═════════════════════════════════════════
+  dashboard:
+    name: Dashboard de resultados
+    needs: [route, lint, audit, test, sonarcloud, preprod-e2e, deploy-front]
+    if: ${{ always() && needs.route.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          path: dashboard-artifacts
+        continue-on-error: true
+      - name: Construir dashboard
+        env:
+          PIPELINE_FLOW: ${{ needs.route.outputs.flow }}
+        run: |
+          mkdir -p dashboard
+          python ci/build_dashboard.py \
+            --input dashboard-artifacts \
+            --html-out dashboard/index.html \
+            --md-out dashboard/summary.md
+          cat dashboard/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-html
+          path: dashboard
+          retention-days: 30
+      - name: Preparar artefacto de Pages
+        if: needs.route.outputs.flow == 'cd' || needs.route.outputs.flow == 'deploy'
+        continue-on-error: true
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard
+
+  # ═══ 8. Publicar dashboard en GitHub Pages (best-effort) ═════════════════════
+  publish-pages:
+    name: Publicar dashboard (Pages)
+    needs: [route, dashboard]
+    if: ${{ always() && (needs.route.outputs.flow == 'cd' || needs.route.outputs.flow == 'deploy') }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
