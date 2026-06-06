@@ -150,9 +150,9 @@ jobs:
           SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
           SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
 
-  # ═══ 5. CD · Preprod en Docker + E2E + DAST (gates estrictos) ════════════════
-  preprod-e2e:
-    name: Preprod + E2E + ZAP
+  # ═══ 5a. CD · E2E (pytest-playwright contra preprod) ═════════════════════════
+  cd-e2e:
+    name: E2E (Playwright)
     needs: route
     if: needs.route.outputs.flow == 'cd'
     runs-on: ubuntu-latest
@@ -161,7 +161,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Login a GHCR (imagen backend)
         continue-on-error: true
         uses: docker/login-action@v3
@@ -169,11 +168,9 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Levantar preprod (postgres + backend GHCR + frontend Nginx)
         run: |
           docker compose -f docker-compose.preprod.yml up --build -d
-          echo "Esperando backend :8000 y frontend :8080..."
           for i in $(seq 1 40); do
             back=$(curl -sf http://localhost:8000/health >/dev/null && echo ok || echo no)
             front=$(curl -sf http://localhost:8080 >/dev/null && echo ok || echo no)
@@ -182,11 +179,7 @@ jobs:
           done
           curl -sf http://localhost:8000/health
           curl -sf http://localhost:8080 >/dev/null
-
-      # ── E2E (pytest-playwright contra el preprod) ────────────────────────────
       - name: E2E (Playwright)
-        id: e2e
-        continue-on-error: true
         env:
           E2E_BASE_URL: http://localhost:8080
           E2E_ADMIN_EMAIL: admin@ecommerce.com
@@ -200,11 +193,44 @@ jobs:
             -c e2e/pytest.ini \
             --junitxml=reports/junit-e2e.xml \
             --tracing=retain-on-failure
+      - name: Apagar preprod
+        if: always()
+        run: docker compose -f docker-compose.preprod.yml down -v
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cd-e2e
+          path: |
+            reports/
+            e2e/test-results/
+          retention-days: 7
 
-      # ── DAST (OWASP ZAP baseline contra el frontend) ─────────────────────────
-      - name: OWASP ZAP (DAST)
-        id: zap
+  # ═══ 5b. CD · DAST (OWASP ZAP contra el frontend) ════════════════════════════
+  cd-dast:
+    name: DAST (OWASP ZAP)
+    needs: route
+    if: needs.route.outputs.flow == 'cd'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login a GHCR (imagen backend)
         continue-on-error: true
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Levantar preprod (postgres + backend GHCR + frontend Nginx)
+        run: |
+          docker compose -f docker-compose.preprod.yml up --build -d
+          for i in $(seq 1 40); do
+            front=$(curl -sf http://localhost:8080 >/dev/null && echo ok || echo no)
+            if [ "$front" = "ok" ]; then echo "frontend listo"; break; fi
+            echo "esperando frontend ($i)..."; sleep 3
+          done
+          curl -sf http://localhost:8080 >/dev/null
+      # El contenedor ZAP alcanza el host por el gateway del bridge (172.17.0.1).
+      - name: OWASP ZAP (DAST)
         uses: zaproxy/action-baseline@master
         with:
           target: http://172.17.0.1:8080
@@ -213,32 +239,18 @@ jobs:
           allow_issue_writing: false
           token: ${{ secrets.GITHUB_TOKEN }}
           cmd_options: "-a"
-
       - name: Apagar preprod
         if: always()
         run: docker compose -f docker-compose.preprod.yml down -v
-
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cd-reports
+          name: cd-dast
           path: |
-            reports/
-            e2e/test-results/
             report_json.json
             report_html.html
             report_md.md
           retention-days: 7
-
-      # ── Gate estricto ────────────────────────────────────────────────────────
-      - name: Gate CD (estricto)
-        if: always()
-        run: |
-          fail=0
-          [ "${{ steps.e2e.outcome }}" = "success" ] || { echo "❌ E2E falló"; fail=1; }
-          [ "${{ steps.zap.outcome }}" = "success" ] || { echo "❌ ZAP (DAST) falló"; fail=1; }
-          [ "$fail" = "0" ] && echo "✅ Todos los gates de CD pasaron"
-          exit $fail
 
   # ═══ 6. DEPLOY · Build de producción + publicar imagen GHCR ══════════════════
   deploy-front:
@@ -264,7 +276,7 @@ jobs:
   # ═══ 7. Dashboard agregado (siempre) ═════════════════════════════════════════
   dashboard:
     name: Dashboard de resultados
-    needs: [route, lint, audit, test, sonarcloud, preprod-e2e, deploy-front]
+    needs: [route, lint, audit, test, sonarcloud, cd-e2e, cd-dast, deploy-front]
     if: ${{ always() && needs.route.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
