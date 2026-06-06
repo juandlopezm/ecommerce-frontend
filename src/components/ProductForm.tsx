@@ -70,8 +70,9 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-sm font-medium">Nombre</label>
+          <label htmlFor="pf-name" className="mb-1 block text-sm font-medium">Nombre</label>
           <input
+            id="pf-name"
             className={input}
             value={form.name}
             onChange={(e) => update("name", e.target.value)}
@@ -80,8 +81,9 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
         </div>
 
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-sm font-medium">Descripción</label>
+          <label htmlFor="pf-desc" className="mb-1 block text-sm font-medium">Descripción</label>
           <textarea
+            id="pf-desc"
             className={input}
             rows={2}
             value={form.description}
@@ -90,8 +92,9 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Precio (COP)</label>
+          <label htmlFor="pf-price" className="mb-1 block text-sm font-medium">Precio (COP)</label>
           <input
+            id="pf-price"
             className={input}
             type="number"
             min="0"
@@ -115,8 +118,9 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Marca</label>
+          <label htmlFor="pf-brand" className="mb-1 block text-sm font-medium">Marca</label>
           <input
+            id="pf-brand"
             className={input}
             value={form.brand}
             onChange={(e) => update("brand", e.target.value)}

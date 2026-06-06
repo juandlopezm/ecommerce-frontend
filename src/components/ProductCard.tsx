@@ -70,7 +70,7 @@ export function ProductCard({ product }: { product: Product }) {
             onClick={addToCart}
             disabled={!product.is_available}
             title={product.is_available ? "Agregar al carrito" : "Agotado"}
-            aria-label="Agregar al carrito"
+            aria-label={`Agregar ${product.name} al carrito`}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-pink-600 text-lg font-bold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-40"
           >
             +
