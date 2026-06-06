@@ -1,11 +1,11 @@
 # Reglas de OWASP ZAP para ajustar los hallazgos del escaneo DAST del frontend.
 # Formato (separado por TABS):  <id_de_regla>	<IGNORE|WARN|FAIL>	<comentario opcional>
 #
-# Por defecto ZAP usa WARN. Con fail_action:true el build falla ante WARN/FAIL.
-# Silencia (IGNORE) aquí los hallazgos revisados que sean aceptables para este MVP
-# (p. ej. cabeceras servidas por Nginx que ajustarás en producción).
-#
-# Ejemplos (descomenta tras revisar el primer reporte):
-# 10020	IGNORE	Missing Anti-clickjacking Header - se ajusta en Nginx prod
-# 10038	IGNORE	Content Security Policy (CSP) Header Not Set - pendiente CSP
-# 10096	IGNORE	Timestamp Disclosure - ruido
+# Con fail_action:true el build falla ante WARN/FAIL. Las cabeceras X-Frame-Options,
+# X-Content-Type-Options, Permissions-Policy y Server se RESUELVEN en nginx.conf.
+# Aquí solo se ignora lo informativo o que requiere diseño por entorno.
+10038	IGNORE	CSP Header Not Set - requiere política por entorno (connect-src del API)
+90004	IGNORE	Cross-Origin-Embedder-Policy - require-corp rompe recursos cross-origin
+10109	IGNORE	Modern Web Application - informativo, no es vulnerabilidad
+90005	IGNORE	Sec-Fetch-Dest Header - cabecera enviada por el cliente, no por el servidor
+10049	IGNORE	Storable and Cacheable Content - los assets estáticos deben ser cacheables
